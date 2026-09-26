@@ -364,6 +364,12 @@ function SidebarSubagents(props: { sessionID: string }) {
 
   const headerColor = resolveFg(context, "text.default", "#eeffff");
   const subdued = resolveFg(context, "text.subdued", "#546e7a");
+
+  // A counter at zero carries no signal, so it stays in the subdued tone
+  // instead of shouting in colour; only counters with something to report
+  // keep their semantic colour.
+  const counterFg = (count: number, color: string): string =>
+    count > 0 ? color : subdued;
   const selected = resolveFg(context, "text.action.primary.selected", "#82aaff");
   const runningColor = resolveFg(context, "text.feedback.warning.default", "#ffcb6b");
   const doneColor = resolveFg(context, "text.feedback.success.default", "#c3e88d");
@@ -394,11 +400,11 @@ function SidebarSubagents(props: { sessionID: string }) {
         </Show>
       </box>
       <box flexDirection="row">
-        <text fg={runningColor}>{`● ${counts().running} run`}</text>
+        <text fg={counterFg(counts().running, runningColor)}>{`● ${counts().running} run`}</text>
         <text fg={subdued}>{" · "}</text>
-        <text fg={doneColor}>{`✓ ${counts().done} done`}</text>
+        <text fg={counterFg(counts().done, doneColor)}>{`✓ ${counts().done} done`}</text>
         <text fg={subdued}>{" · "}</text>
-        <text fg={failedColor}>{`✕ ${counts().failed} err`}</text>
+        <text fg={counterFg(counts().failed, failedColor)}>{`✕ ${counts().failed} err`}</text>
       </box>
       <Show when={counts().stale > 0}>
         <text fg={staleColor}>{`◐ ${counts().stale} stale`}</text>
