@@ -73,6 +73,12 @@ const [activeSessionID, setActiveSessionID] = createSignal<
   string | undefined
 >(undefined);
 
+// Rows are rendered from `visible()` (a filtered/truncated view of
+// `childrenOf`), so row navigation must resolve through the same list.
+// Indexing `childrenOf` directly skips the truncation and can open the wrong
+// session once more than MAX_DONE_ROWS subagents have completed.
+let renderedRows: V2Session[] = [];
+
 let lastRefreshAt = 0;
 
 // Coalesce the flood of server events into at most one recompute per frame
@@ -193,7 +199,8 @@ function fgFor(session: V2Session): string {
 function commandsFor(context: MonitorContext): KeymapCommand[] {
   const openCursor = () => {
     if (!focused()) return false;
-    const target = childrenOf(activeSessionID())[cursor()];
+    const target =
+      renderedRows[cursor()] ?? childrenOf(activeSessionID())[cursor()];
     if (!target) return;
     context.ui.router.navigate({ type: "session", sessionID: target.id });
   };
@@ -324,6 +331,10 @@ function SidebarSubagents(props: { sessionID: string }) {
   );
 
   createEffect(() => {
+    renderedRows = visible();
+  });
+
+  createEffect(() => {
     const length = visible().length;
     if (length > 0 && cursor() >= length) setCursor(length - 1);
   });
@@ -397,8 +408,15 @@ function SidebarSubagents(props: { sessionID: string }) {
           {(item, i) => {
             const labelLines = () => wrapLabel(labelFor(item), LABEL_WIDTH, 2);
             const isCursor = () => focused() && cursor() === i();
+            // V1 parity: rows must respond to the pointer too — V1 registers
+            // onMouseDown/onMouseUp on every row, V2 only had the header.
+            const openRow = (): void => {
+              setFocused(true);
+              setCursor(i());
+              context.ui.router.navigate({ type: "session", sessionID: item.id });
+            };
             return (
-              <box flexDirection="column">
+              <box flexDirection="column" onMouseDown={openRow}>
                 <box flexDirection="row">
                   <text fg={isCursor() ? selected : subdued}>
                     {isCursor() ? CURSOR_MARKER : " "}
